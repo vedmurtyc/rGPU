@@ -1,4 +1,13 @@
 #!/usr/bin/python
+
+# Implement a class to store the requests. (Workload and result files.)
+# Class has dataMembers: VM's IP, .cu file, data files and/or request Name (for pre-defined services)
+# Queue will contain objects of the above class.
+# Use Multithreading: Producer accepts GPU requests and queues them,
+#                     Consumer pops items from queue and processes them, sends results back. 
+#                     If required, implement another queue to store results, and a third thread will do the work
+#					  of sending the results. <producer-Consumer chaining>
+
 import os
 import sys
 import time
@@ -16,14 +25,6 @@ transferComplete = "TRANSFERCOMPLETE"
 runComplete      = "RUNCOMPLETE"
 transferTimeout  = "TRANSFERTIMEOUT"
 
-# Implement a class to store the requests. (Workload and result files.)
-# Class has dataMembers: VM's IP, .cu file, data files and/or request Name (for pre-defined services)
-# Queue will contain objects of the above class.
-# Use Multithreading: Producer accepts GPU requests and queues them,
-#                     Consumer pops items from queue and processes them, sends results back. 
-#                     If required, implement another queue to store results, and a third thread will do the work
-#					  of sending the results. <producer-Consumer chaining>
-
 # Class for storing individual incoming requests and generated result files.
 class procRequest():
 	def __init__(self, conn, vmIP, fileCount, codeFile, DataFiles, resultFile):
@@ -40,28 +41,22 @@ class procRequest():
 requestQ = Queue ()
 resultsQ = Queue ()
 
-allThreads = []
-# TODO : Need another queue and method just for sending data.
 # IMP  : Slide must contain diagram showing 2 queues.
 
 rGPU = socket.socket()
-  # Make it a non-blocking socket
-SIZE = 1024
-# IP address of the HOST
-HOST = "10.0.0.91"
+SIZE = 1024  
+HOST = "10.0.0.91"                           # IP address of the HOST
 # host = "130.85.250.30"
-# Port number for GPU services
-port = 12512        
+port = 12512                                 # Port number for GPU services
 
 # Bind the port and Address 
 rGPU.bind((HOST, port))
 rGPU.listen(5)
 
-# Server running continuously waiting for requests
+# Listener thread running continuously waiting for requests
 def keepListening():
 	while True:
 		# Accept an incoming connection from a VM
-		# Accept client[VMip]. make object of class outside the class defn. 
 		client, addr  = rGPU.accept()
 		if (debug) : print client, addr
 		# Thread invocation on connectToVM method
@@ -70,32 +65,26 @@ def keepListening():
 
 # Function to connect to a single VM and accept workload from it
 # create an object and add it to the requestQ
-def connectToVM(clientConn, addrOfVM):
-	
-	# Extract IP of VM from addrOfVM
-	#remoteMachine = str(addrOfVM)[1:].split(",")[0][1:-1]
+def connectToVM(clientConn, addrOfVM):	
+	# Extract IP and portnum of VM from addrOfVM
 	remoteMachine = addrOfVM[0]
 	portNum       = str(addrOfVM[1])
 	# Accept the request to process data
-	print "\n GPU service requested by %s " % remoteMachine
+	print "\nGPU service requested by %s " % remoteMachine
 	clientConn.send(goodToSend)
-	print "\n Request acknowledged.\n"
-	
+	if (debug) : print "\n[DEBUG] : Request acknowledged.\n"
+
 	# Accept the GPU code and data
 	# VM sends over number of files it will send.
-    # TODO : on client side, send over argc of rGPU.py prior to sending any workload
-    # For a single VM, server will keep accepting "numIncomingFiles" number of Files
 	numIncomingFiles = clientConn.recv(SIZE)
 	#numIncomingFiles,halfFile = numIncomingFiles.split(DELIMITER)
 	numIncomingFiles =  int(numIncomingFiles)
-	print "Incoming Files are :", numIncomingFiles
-	# clientConn.send(transferComplete)
+	print "\nNumber of Incoming Files are :", numIncomingFiles
 
 	if debug : print "[DEBUG] : Number of incoming files are ", numIncomingFiles
 	# Name of source code file. If pre-defined service is requested, codeFile = serviceName
 	codeFile  = "sourceCode_" + remoteMachine.split(".")[3] + "_" + portNum + ".cu"
 	# TODO : add support for an array of dataFiles. Currently implementing for a single input data file 
-	# This means, numIncomingFiles = 2 for now.
 	dataFile = "workLoad_"  + remoteMachine.split(".")[3] + "_" + portNum 
 	resFile  = "result_"    + remoteMachine.split(".")[3] + "_" + portNum 
 
@@ -129,12 +118,10 @@ def connectToVM(clientConn, addrOfVM):
 		numIncomingFiles -= 1
 	clientConn.send(transferComplete)
 	# All data from clientConn has been received. 
-
 	# Add the object created to Queue.
 	requestQ.put(serviceRequest)
 	if (debug) : print "Object Enququed!"
 	if (debug) : print "Request Q size : ", requestQ.qsize()
-	# Server now waits for other GPU service requests.
 
 	# Below code is executing one request at a time and sending the results.
 	# Need to write separate functions for this. either 1 or 2.
@@ -142,15 +129,11 @@ def connectToVM(clientConn, addrOfVM):
 
 def keepProcessing():
 	while True:
-		while(requestQ.empty()):
-			pass
-		while(not requestQ.empty()):
-			print "[PROCESS] Current Size is ", requestQ.qsize()
-			processReq = requestQ.get()
-			print "[PROCESS] SourceFile :",processReq.codeFile	
-			t_startJob = threading.Thread(target=processRequest, args=(processReq,))
-			t_startJob.start()	
-			# print "Launched Thread ", threading.get_ident()
+		if (debug) : print "[PROCESS] Current Size is ", requestQ.qsize()
+		processReq = requestQ.get(True)
+		print "[PROCESS] SourceFile :",processReq.codeFile	
+		t_startJob = threading.Thread(target=processRequest, args=(processReq,))
+		t_startJob.start()	
 	
 def processRequest(processJob):
 	print "SOURCE CODE : ", processJob.codeFile
@@ -164,12 +147,9 @@ def processRequest(processJob):
 
 def keepSending():
 	while True:
-		while(resultsQ.empty()):
-			pass
-		while(not resultsQ.empty()):
-			sendRes = resultsQ.get()	
-			t_sendResult = threading.Thread(target=sendResults, args=(sendRes,))
-			t_sendResult.start()	
+		sendRes = resultsQ.get(True)	
+		t_sendResult = threading.Thread(target=sendResults, args=(sendRes,))
+		t_sendResult.start()	
 
 def sendResults(sendObj):
 	# Client acknowledges its ready to receive results
@@ -181,8 +161,8 @@ def sendResults(sendObj):
 		while buff:
 			sendObj.connection.send(buff)
 			buff = fd.read(SIZE)
-		sendObj.connection.send(transferComplete)
-		if (debug): print "\n This is the last client rcv\n"
+		# sendObj.connection.send(transferComplete)
+		if (debug): print "\nThis is the last client rcv\n"
 		sendObj.connection.recv(SIZE)
 	sendObj.connection.close()                # Close the connection
 	
@@ -193,15 +173,6 @@ def sendResults(sendObj):
 # Phase I : Keep Accepting Connections
 t_keepListening = threading.Thread(target=keepListening)
 t_keepListening.start()
-"""
-print "Sleeping"
-time.sleep (20)
-while not requestQ.empty():
-	print "Inside WHILE"
-	job = requestQ.get()
-	print job.codeFile"""
-
-# print threading.enumerate()
 
 # Phase II : Keep Processing from Request Q
 t_keepProcessing   = threading.Thread(target=keepProcessing)
@@ -210,5 +181,3 @@ t_keepProcessing.start()
 # Phase III : Keep Sending results from Result Q
 t_keepSending  = threading.Thread(target=keepSending)
 t_keepSending.start()
-
-# rGPU.close()
