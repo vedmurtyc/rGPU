@@ -1,0 +1,50 @@
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block ID :0:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Block Dim :10:
+Theard ID :0:
+Theard ID :1:
+Theard ID :2:
+Theard ID :3:
+Theard ID :4:
+Theard ID :5:
+Theard ID :6:
+Theard ID :7:
+Theard ID :8:
+Theard ID :9:
+Temp:2
+Temp:8
+Temp:18
+Temp:32
+Temp:50
+Temp:72
+Temp:98
+Temp:128
+Temp:162
+Temp:200
+
+SUM[0]:770
+Array A:
+1 2 3 4 5 6 7 8 9 10 
+Array B:
+2 4 6 8 10 12 14 16 18 20 
+
+Launching Kernel
+
+Dot Product is: 770

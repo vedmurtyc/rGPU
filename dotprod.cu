@@ -1,20 +1,20 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-#define SIZE 10
-#define NUM_BLOCKS 1
-#define THREADS_PER_BLOCK 10
+#define SIZE 1000
+#define NUM_BLOCKS 10
+#define THREADS_PER_BLOCK 100
 
 __global__ void DotProd(int *a, int *b, int *c) {
 	
 	__shared__ int temp[THREADS_PER_BLOCK];
 
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
-	printf("Block ID :%d:\n", blockIdx.x);
+	/*printf("Block ID :%d:\n", blockIdx.x);
 	printf("Block Dim :%d:\n", blockDim.x);
-	printf("Theard ID :%d:\n", threadIdx.x);
+	printf("Theard ID :%d:\n", threadIdx.x);*/
 	temp[threadIdx.x] = a[x] * b[x];
-	printf("Temp:%d\n", temp[threadIdx.x]);
+	// printf("Temp:%d\n", temp[threadIdx.x]);
 
 	__syncthreads();
 	
@@ -25,7 +25,7 @@ __global__ void DotProd(int *a, int *b, int *c) {
 		{
 			sum += temp[i];
 		}
-		printf("\nSUM[%d]:%d", blockIdx.x, sum);
+		// printf("\nSUM[%d]:%d", blockIdx.x, sum);
 		atomicAdd(c, sum);
 	}
 }
